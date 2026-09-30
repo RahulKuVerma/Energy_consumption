@@ -1,21 +1,16 @@
-import pytest
 import io
-from fastapi.testclient import TestClient
-from backend.main import app
 
-client = TestClient(app)
-
-def test_file_upload_validation():
+def test_file_upload_validation(admin_client):
     # Attempt invalid file extension
     invalid_file = io.BytesIO(b"dummy data")
-    response = client.post(
+    response = admin_client.post(
         "/api/upload/file",
         files={"file": ("test.exe", invalid_file, "application/octet-stream")}
     )
     assert response.status_code == 400
     assert "Unsupported file extension" in response.json()["detail"]
 
-def test_csv_upload_inspection():
+def test_csv_upload_inspection(admin_client):
     csv_content = (
         "Date;Time;Global_active_power;Global_reactive_power;Voltage;Global_intensity;Sub_metering_1;Sub_metering_2;Sub_metering_3\n"
         "28/09/2026;12:00:00;1.42;0.12;234.5;6.1;0.0;1.0;17.0\n"
@@ -26,7 +21,7 @@ def test_csv_upload_inspection():
     ).encode("utf-8")
 
     file_obj = io.BytesIO(csv_content)
-    response = client.post(
+    response = admin_client.post(
         "/api/upload/file",
         files={"file": ("household_sample.txt", file_obj, "text/plain")}
     )

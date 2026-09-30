@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Cpu, Award, Zap, RefreshCw, BarChart2 } from 'lucide-react';
+import { Cpu, Award, RefreshCw, BarChart2, Play } from 'lucide-react';
 import { api } from '../services/api.js';
 import ModelMetrics from '../components/ModelMetrics.jsx';
 import Loading from '../components/Loading.jsx';
@@ -40,11 +40,16 @@ const MODEL_ARCHITECTURE_DETAIL = {
   },
 };
 
-export default function ModelsPage({ activeModel, onSelectModel }) {
+export default function ModelsPage({ activeModel, onSelectModel, userRole }) {
   const [models, setModels] = useState([]);
   const [comparison, setComparison] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedDetail, setSelectedDetail] = useState(null);
+  const [datasets, setDatasets] = useState([]);
+  const [trainingDatasetId, setTrainingDatasetId] = useState('');
+  const [training, setTraining] = useState(false);
+  const [actionMessage, setActionMessage] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const fetchData = async () => {
     try {
@@ -54,6 +59,11 @@ export default function ModelsPage({ activeModel, onSelectModel }) {
       ]);
       setModels(Array.isArray(mods) ? mods : []);
       setComparison(comp);
+      if (userRole === 'admin') {
+        const availableDatasets = await api.getDatasets();
+        setDatasets(Array.isArray(availableDatasets) ? availableDatasets : []);
+        setTrainingDatasetId((current) => current || String(availableDatasets[0]?.id || ''));
+      }
     } catch (err) {
       console.error('Models fetch error:', err);
     } finally {
@@ -61,7 +71,36 @@ export default function ModelsPage({ activeModel, onSelectModel }) {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [userRole]);
+
+  const trainAllModels = async () => {
+    if (!trainingDatasetId) return;
+    setTraining(true);
+    setActionError('');
+    setActionMessage('Training Linear Regression, XGBoost, and LSTM...');
+    try {
+      await api.trainModels(Number(trainingDatasetId));
+      setActionMessage('All three models were trained and their metrics were updated.');
+      await fetchData();
+    } catch (err) {
+      setActionError(err.message || 'Model training failed.');
+      setActionMessage('');
+    } finally {
+      setTraining(false);
+    }
+  };
+
+  const togglePublication = async (model) => {
+    setActionError('');
+    setActionMessage('');
+    try {
+      await api.setModelPublication(model.id, !model.is_published);
+      setActionMessage(`${model.name} ${model.is_published ? 'is now hidden from users.' : 'is now published to users.'}`);
+      await fetchData();
+    } catch (err) {
+      setActionError(err.message || 'Could not update model publication.');
+    }
+  };
 
   if (loading) return <Loading message="Loading model benchmarks..." />;
 
@@ -89,6 +128,21 @@ export default function ModelsPage({ activeModel, onSelectModel }) {
         )}
       </div>
 
+      {userRole === 'admin' && <section style={{ display: 'flex', alignItems: 'end', gap: '0.75rem', padding: '1rem 0', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+        <label style={{ display: 'grid', gap: '0.35rem', color: 'var(--text-muted)', fontSize: '0.76rem', fontWeight: 700 }}>
+          TRAINING DATASET
+          <select value={trainingDatasetId} onChange={(event) => setTrainingDatasetId(event.target.value)} disabled={!datasets.length || training} style={{ minWidth: '260px', padding: '0.65rem 0.75rem', color: 'var(--text-primary)', background: 'var(--surface-control)', border: '1px solid var(--border-subtle)', borderRadius: '6px' }}>
+            {datasets.map((dataset) => <option key={dataset.id} value={dataset.id}>{dataset.name} · {dataset.row_count.toLocaleString()} rows</option>)}
+          </select>
+        </label>
+        <button type="button" className="btn btn-primary" onClick={trainAllModels} disabled={!trainingDatasetId || training}>
+          <Play size={15} /> {training ? 'Training all models…' : 'Train all three'}
+        </button>
+        {actionMessage && <span role="status" style={{ color: 'var(--eco-emerald)', fontSize: '0.82rem' }}>{actionMessage}</span>}
+        {actionError && <span role="alert" style={{ color: 'var(--alert-rose)', fontSize: '0.82rem' }}>{actionError}</span>}
+        {!datasets.length && <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Upload a dataset before training.</span>}
+      </section>}
+
       {/* Benchmark Info Banner */}
       {comparison && (
         <div style={{
@@ -111,6 +165,8 @@ export default function ModelsPage({ activeModel, onSelectModel }) {
         models={models}
         activeModel={activeModel}
         onSelectModel={onSelectModel}
+        isAdmin={userRole === 'admin'}
+        onTogglePublication={togglePublication}
       />
 
       {/* Architecture Cards */}
@@ -119,7 +175,7 @@ export default function ModelsPage({ activeModel, onSelectModel }) {
           Architecture Details
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem' }}>
-          {Object.entries(MODEL_ARCHITECTURE_DETAIL).map(([key, info]) => {
+          {Object.entries(MODEL_ARCHITECTURE_DETAIL).filter(([key]) => userRole === 'admin' || models.some((model) => model.model_type === key)).map(([key, info]) => {
             const modelData = models.find(m => m.model_type === key);
             const isActive = activeModel === key;
             const isExpanded = selectedDetail === key;

@@ -20,6 +20,8 @@ class DatasetResponse(DatasetBase):
     id: int
     file_path: str
     file_size_bytes: int
+    owner_id: Optional[int] = None
+    uploaded_by: Optional[str] = None
     created_at: Optional[Any] = None
 
 # --- Reading Schemas ---
@@ -54,6 +56,7 @@ class MLModelResponse(BaseModel):
     r2_score: Optional[float] = None
     hyperparameters: Optional[Dict[str, Any]] = None
     is_active: bool
+    is_published: bool = False
     trained_at: Optional[Any] = None
 
 # --- Forecast Schemas ---

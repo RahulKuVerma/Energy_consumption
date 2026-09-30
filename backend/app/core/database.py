@@ -63,3 +63,28 @@ def init_db(force: bool = False):
                 with open(seed_file, "r", encoding="utf-8") as f:
                     conn.executescript(f.read())
             conn.commit()
+
+    with sqlite3.connect(str(db_file)) as conn:
+        conn.execute("PRAGMA foreign_keys = ON;")
+        if schema_file.exists():
+            with open(schema_file, "r", encoding="utf-8") as f:
+                conn.executescript(f.read())
+        table_columns = {
+            table: {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+            for table in ("datasets", "ml_models")
+        }
+        if "owner_id" not in table_columns["datasets"]:
+            conn.execute("ALTER TABLE datasets ADD COLUMN owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL")
+        if "is_published" not in table_columns["ml_models"]:
+            conn.execute("ALTER TABLE ml_models ADD COLUMN is_published BOOLEAN DEFAULT 0")
+
+        admin_username = os.getenv("ADMIN_USERNAME", "admin")
+        admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
+        exists = conn.execute("SELECT 1 FROM users WHERE username = ?", (admin_username,)).fetchone()
+        if not exists:
+            from backend.app.core.auth import hash_password
+            conn.execute(
+                "INSERT INTO users (username, password_hash, role) VALUES (?, ?, 'admin')",
+                (admin_username, hash_password(admin_password)),
+            )
+        conn.commit()

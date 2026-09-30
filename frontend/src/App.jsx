@@ -8,9 +8,12 @@ import DatasetLibraryPage from './pages/DatasetLibraryPage.jsx';
 import AnalyticsPage from './pages/AnalyticsPage.jsx';
 import ModelsPage from './pages/ModelsPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
+import LoginPage from './pages/LoginPage.jsx';
 import { api, DEFAULT_SYSTEM_SETTINGS } from './services/api.js';
 
 export default function App() {
+  const [authLoading, setAuthLoading] = useState(Boolean(localStorage.getItem('accessToken')));
+  const [currentUser, setCurrentUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedDatasetId, setSelectedDatasetId] = useState(() => {
     const savedId = Number(localStorage.getItem('activeDatasetId'));
@@ -22,10 +25,22 @@ export default function App() {
   const [systemSettings, setSystemSettings] = useState(DEFAULT_SYSTEM_SETTINGS);
 
   useEffect(() => {
+    if (!localStorage.getItem('accessToken')) return;
+    api.getCurrentUser()
+      .then((user) => {
+        setCurrentUser(user);
+        setActiveTab(user.role === 'admin' ? 'dashboard' : 'datasets');
+      })
+      .catch(() => localStorage.removeItem('accessToken'))
+      .finally(() => setAuthLoading(false));
+  }, []);
+
+  useEffect(() => {
     document.documentElement.dataset.theme = systemSettings.theme;
   }, [systemSettings.theme]);
 
   useEffect(() => {
+    if (!currentUser) return;
     if (!selectedDatasetId) {
       setActiveDataset(null);
       return;
@@ -38,7 +53,7 @@ export default function App() {
         setSelectedDatasetId(null);
         localStorage.removeItem('activeDatasetId');
       });
-  }, [selectedDatasetId]);
+  }, [selectedDatasetId, currentUser]);
 
   const selectDataset = (datasetId) => {
     const id = Number(datasetId);
@@ -47,18 +62,34 @@ export default function App() {
     setSelectedDatasetId(id);
   };
 
-  // Check backend health on mount
   useEffect(() => {
     api.getHealth()
       .then(() => setBackendStatus('online'))
       .catch(() => setBackendStatus('offline'));
+  }, []);
+
+  useEffect(() => {
+    if (currentUser?.role !== 'admin') return;
     api.getSettings()
       .then((savedSettings) => {
         setSystemSettings(savedSettings);
         setSelectedModel(savedSettings.default_model);
       })
       .catch((error) => console.error('Settings load error:', error));
-  }, []);
+  }, [currentUser]);
+
+  const handleAuthenticated = (user) => {
+    setCurrentUser(user);
+    setActiveTab(user.role === 'admin' ? 'dashboard' : 'datasets');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('activeDatasetId');
+    setCurrentUser(null);
+    setSelectedDatasetId(null);
+    setActiveTab('dashboard');
+  };
 
   const saveSettings = async (nextSettings) => {
     const savedSettings = await api.saveSettings(nextSettings);
@@ -96,15 +127,18 @@ export default function App() {
             selectedModel={selectedModel}
             settings={systemSettings}
             onSelectModel={setSelectedModel}
+            userRole={currentUser?.role}
+            onOpenDatasets={() => setActiveTab('datasets')}
           />
         );
       case 'upload':
         return (
           <UploadPage
             defaultResampleFreq={systemSettings.resample_freq}
+            userRole={currentUser?.role}
             onDatasetLoaded={(id) => {
               selectDataset(id);
-              setActiveTab('dashboard');
+              setActiveTab(currentUser?.role === 'admin' ? 'dashboard' : 'forecast');
             }}
           />
         );
@@ -113,7 +147,8 @@ export default function App() {
           <DatasetLibraryPage
             selectedDatasetId={selectedDatasetId}
             onSelectDataset={selectDataset}
-            onOpenDashboard={() => setActiveTab('dashboard')}
+            userRole={currentUser?.role}
+            onOpenDashboard={() => setActiveTab(currentUser?.role === 'admin' ? 'dashboard' : 'forecast')}
             onOpenUpload={() => setActiveTab('upload')}
           />
         );
@@ -124,6 +159,7 @@ export default function App() {
           <ModelsPage
             activeModel={selectedModel}
             onSelectModel={setSelectedModel}
+            userRole={currentUser?.role}
           />
         );
       case 'settings':
@@ -133,9 +169,12 @@ export default function App() {
     }
   };
 
+  if (authLoading) return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: 'var(--text-muted)' }}>Checking session…</div>;
+  if (!currentUser) return <LoginPage onAuthenticated={handleAuthenticated} />;
+
   return (
     <div className="app-container">
-      <Sidebar activeTab={activeTab} onSelectTab={setActiveTab} />
+      <Sidebar activeTab={activeTab} onSelectTab={setActiveTab} role={currentUser.role} username={currentUser.username} onLogout={handleLogout} />
       <div className="main-content">
         <Navbar
           backendStatus={backendStatus}

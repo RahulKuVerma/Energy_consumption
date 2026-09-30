@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Play, TrendingUp, Clock, Zap, BarChart2, Info } from 'lucide-react';
 import { api } from '../services/api.js';
 import ForecastChart from '../components/ForecastChart.jsx';
@@ -36,7 +36,7 @@ const HORIZON_OPTIONS = [
   { label: '7 Days', value: 168 },
 ];
 
-export default function ForecastPage({ selectedDatasetId, activeDataset, selectedModel, settings, onSelectModel }) {
+export default function ForecastPage({ selectedDatasetId, activeDataset, selectedModel, settings, onSelectModel, userRole, onOpenDatasets }) {
   const [model, setModel] = useState(selectedModel || 'xgboost');
   const [horizon, setHorizon] = useState(settings.default_horizon);
   const [forecast, setForecast] = useState(null);
@@ -44,6 +44,20 @@ export default function ForecastPage({ selectedDatasetId, activeDataset, selecte
   const [error, setError] = useState(null);
   const [history, setHistory] = useState([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [availableModels, setAvailableModels] = useState([]);
+
+  useEffect(() => {
+    api.getModels()
+      .then((models) => setAvailableModels(Array.isArray(models) ? models : []))
+      .catch((err) => setError(err.message || 'Could not load available models.'));
+  }, []);
+
+  useEffect(() => {
+    if (!availableModels.length || availableModels.some((item) => item.model_type === model)) return;
+    const nextModel = availableModels[0].model_type;
+    setModel(nextModel);
+    onSelectModel(nextModel);
+  }, [availableModels, model, onSelectModel]);
 
   const handleModelChange = (m) => {
     setModel(m);
@@ -82,7 +96,7 @@ export default function ForecastPage({ selectedDatasetId, activeDataset, selecte
           Forecast Studio
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-          Data source: {activeDataset?.name || 'All datasets'}
+          Data source: {activeDataset?.name || (userRole === 'admin' ? 'All datasets' : 'No dataset selected')}
         </p>
       </div>
 
@@ -95,7 +109,7 @@ export default function ForecastPage({ selectedDatasetId, activeDataset, selecte
               ML Model
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              {Object.entries(MODEL_INFO).map(([key, info]) => (
+              {Object.entries(MODEL_INFO).filter(([key]) => availableModels.some((item) => item.model_type === key)).map(([key, info]) => (
                 <button
                   key={key}
                   id={`model-btn-${key}`}
@@ -120,6 +134,7 @@ export default function ForecastPage({ selectedDatasetId, activeDataset, selecte
                   </div>
                 </button>
               ))}
+              {!availableModels.length && !error && <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem' }}>No published models are available yet.</p>}
             </div>
           </div>
 
@@ -169,7 +184,7 @@ export default function ForecastPage({ selectedDatasetId, activeDataset, selecte
           <button
             id="run-forecast-btn"
             onClick={runForecast}
-            disabled={loading}
+            disabled={loading || (userRole !== 'admin' && !selectedDatasetId) || !availableModels.some((item) => item.model_type === model)}
             className="btn btn-primary"
             style={{ padding: '1rem', fontSize: '1rem', width: '100%' }}
           >
@@ -179,6 +194,9 @@ export default function ForecastPage({ selectedDatasetId, activeDataset, selecte
               <><Play size={18} /> Run Forecast</>
             )}
           </button>
+          {userRole !== 'admin' && !selectedDatasetId && <button type="button" onClick={onOpenDatasets} className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center' }}>
+            Choose a dataset
+          </button>}
         </div>
 
         {/* Right: Chart + Results */}

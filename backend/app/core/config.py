@@ -1,4 +1,5 @@
 import os
+import secrets
 from pathlib import Path
 
 # Fallback handling across Pydantic v2, v1, and standard Python
@@ -23,7 +24,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Energy Consumption Forecasting API"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api"
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "super_secret_jwt_key_change_in_production")
+    SECRET_KEY: str = os.getenv("SECRET_KEY") or secrets.token_urlsafe(32)
     
     # Server
     HOST: str = os.getenv("HOST", "0.0.0.0")

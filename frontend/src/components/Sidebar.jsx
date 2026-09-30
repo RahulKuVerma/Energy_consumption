@@ -7,11 +7,12 @@ import {
   Cpu, 
   Database,
   Settings as SettingsIcon,
-  ShieldCheck
+  ShieldCheck,
+  LogOut,
 } from 'lucide-react';
 
-export default function Sidebar({ activeTab, onSelectTab }) {
-  const navItems = [
+export default function Sidebar({ activeTab, onSelectTab, role = 'admin', username = '', onLogout }) {
+  const adminItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'forecast', label: 'Forecast Studio', icon: TrendingUp },
     { id: 'upload', label: 'Upload Data', icon: UploadCloud },
@@ -20,6 +21,13 @@ export default function Sidebar({ activeTab, onSelectTab }) {
     { id: 'models', label: 'Model Benchmarks', icon: Cpu },
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
   ];
+  const userItems = [
+    { id: 'forecast', label: 'Forecast Studio', icon: TrendingUp },
+    { id: 'upload', label: 'Upload Data', icon: UploadCloud },
+    { id: 'datasets', label: 'My Datasets', icon: Database },
+    { id: 'models', label: 'Published Models', icon: Cpu },
+  ];
+  const navItems = role === 'admin' ? adminItems : userItems;
 
   return (
     <aside style={{
@@ -34,7 +42,8 @@ export default function Sidebar({ activeTab, onSelectTab }) {
       display: 'flex',
       flexDirection: 'column',
       zIndex: 60,
-      padding: '1.5rem 1rem'
+      padding: '1.5rem 1rem',
+      overflowY: 'auto'
     }}>
       {/* Brand Header */}
       <div style={{ padding: '0.5rem 0.75rem 2rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
@@ -107,8 +116,16 @@ export default function Sidebar({ activeTab, onSelectTab }) {
         })}
       </nav>
 
+      <div style={{ padding: '0.85rem 0.75rem', borderTop: '1px solid var(--border-subtle)', marginBottom: '0.75rem' }}>
+        <div style={{ color: 'var(--text-primary)', fontSize: '0.82rem', fontWeight: 700 }}>{username}</div>
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', textTransform: 'capitalize', marginTop: '0.1rem' }}>{role}</div>
+        <button type="button" onClick={onLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', border: 0, background: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.65rem 0 0', fontSize: '0.8rem' }}>
+          <LogOut size={15} /> Sign out
+        </button>
+      </div>
+
       {/* Architecture Footer Stamp */}
-      <div style={{
+      {role === 'admin' && <div style={{
         padding: '1rem',
         borderRadius: 'var(--radius-md)',
         background: 'rgba(255, 255, 255, 0.03)',
@@ -131,7 +148,7 @@ export default function Sidebar({ activeTab, onSelectTab }) {
           <span>Core Engine</span>
           <span style={{ color: 'var(--eco-emerald)', fontWeight: '600' }}>XGBoost / LSTM</span>
         </div>
-      </div>
+      </div>}
     </aside>
   );
 }

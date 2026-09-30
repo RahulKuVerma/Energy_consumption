@@ -23,7 +23,8 @@ class PreprocessingService:
         file_path: Path,
         mapping: Dict[str, str],
         dataset_name: str,
-        resample_freq: str = "15m"
+        resample_freq: str = "15m",
+        owner_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Full pipeline:
@@ -136,8 +137,8 @@ class PreprocessingService:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO datasets (name, filename, file_path, file_size_bytes, row_count, sampling_rate, start_timestamp, end_timestamp, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO datasets (name, filename, file_path, file_size_bytes, row_count, sampling_rate, start_timestamp, end_timestamp, status, owner_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     dataset_name,
@@ -148,7 +149,8 @@ class PreprocessingService:
                     sampling_label,
                     start_ts,
                     end_ts,
-                    "processed"
+                    "processed",
+                    owner_id,
                 )
             )
             dataset_id = cursor.lastrowid

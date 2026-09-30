@@ -1,10 +1,12 @@
 const API_BASE = '/api';
 
 async function request(url, options = {}) {
+  const token = localStorage.getItem('accessToken');
   const res = await fetch(`${API_BASE}${url}`, {
     ...options,
     headers: {
       'Accept': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   });
@@ -35,6 +37,18 @@ export const DEFAULT_SYSTEM_SETTINGS = {
 };
 
 export const api = {
+  login: (username, password) => request('/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  }),
+  register: (username, password) => request('/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  }),
+  getCurrentUser: () => request('/auth/me'),
+
   // Health & Status
   getHealth: () => request('/health'),
   getSettings: () => request('/settings'),
@@ -83,6 +97,16 @@ export const api = {
   // Models
   getModels: () => request('/models'),
   compareModels: () => request('/models/compare'),
+  trainModels: (datasetId) => request('/models/train', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dataset_id: datasetId }),
+  }),
+  setModelPublication: (modelId, isPublished) => request(`/models/${modelId}/publication`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ is_published: isPublished }),
+  }),
 
   // Forecasting
   createForecast: (modelName, horizonHours = 24, datasetId = null) => 

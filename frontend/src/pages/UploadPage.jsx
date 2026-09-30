@@ -7,7 +7,7 @@ import DataPreview from '../components/DataPreview.jsx';
 
 const STEPS = ['Upload File', 'Map Columns', 'Preview & Import'];
 
-export default function UploadPage({ onDatasetLoaded, defaultResampleFreq }) {
+export default function UploadPage({ onDatasetLoaded, defaultResampleFreq, userRole }) {
   const [step, setStep] = useState(0);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [uploadResult, setUploadResult] = useState(null);
@@ -74,8 +74,9 @@ export default function UploadPage({ onDatasetLoaded, defaultResampleFreq }) {
           Dataset Imported Successfully!
         </h2>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-          Your energy data has been processed and stored.<br />
-          Forecasts and analytics are now available.
+          {userRole === 'admin'
+            ? <>Your energy data has been processed and stored.<br />Forecasts and analytics are now available.</>
+            : <>Your energy data has been processed and stored.<br />It is now available in your dataset library.</>}
         </p>
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
           <button

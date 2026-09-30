@@ -1,9 +1,11 @@
 import json
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from typing import Optional, Dict
 from backend.app.services.file_service import file_service
 from backend.app.services.preprocessing_service import preprocessing_service
 from backend.app.utils.validators import validate_file_extension
+from backend.app.core.auth import get_current_user
+from backend.app.core.config import settings
 
 router = APIRouter()
 
@@ -37,7 +39,8 @@ async def process_dataset(
     file_path: str = Form(...),
     dataset_name: str = Form(...),
     column_mapping: str = Form(...),  # JSON string
-    resample_freq: str = Form("1h")
+    resample_freq: str = Form("1h"),
+    user=Depends(get_current_user),
 ):
     """
     Step 2 of Ingestion:
@@ -51,7 +54,10 @@ async def process_dataset(
 
     from pathlib import Path
     path_obj = Path(file_path)
-    if not path_obj.exists():
+    try:
+        path_obj = path_obj.resolve(strict=True)
+        path_obj.relative_to(settings.RAW_UPLOAD_DIR.resolve())
+    except (OSError, ValueError):
         raise HTTPException(status_code=404, detail="Uploaded file not found on server.")
 
     try:
@@ -59,7 +65,8 @@ async def process_dataset(
             file_path=path_obj,
             mapping=mapping,
             dataset_name=dataset_name,
-            resample_freq=resample_freq
+            resample_freq=resample_freq,
+            owner_id=user["id"],
         )
         return {
             "status": "success",

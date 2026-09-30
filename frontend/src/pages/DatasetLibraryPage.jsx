@@ -11,7 +11,7 @@ function formatDate(value) {
   });
 }
 
-export default function DatasetLibraryPage({ selectedDatasetId, onSelectDataset, onOpenDashboard, onOpenUpload }) {
+export default function DatasetLibraryPage({ selectedDatasetId, onSelectDataset, onOpenDashboard, onOpenUpload, userRole }) {
   const [datasets, setDatasets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -92,6 +92,7 @@ export default function DatasetLibraryPage({ selectedDatasetId, onSelectDataset,
               <thead>
                 <tr style={{ color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid var(--border-subtle)', fontSize: '0.72rem', textTransform: 'uppercase' }}>
                   <th style={{ padding: '0.9rem 1rem' }}>Dataset</th>
+                  {userRole === 'admin' && <th style={{ padding: '0.9rem 1rem' }}>Uploaded by</th>}
                   <th style={{ padding: '0.9rem 1rem' }}>Readings</th>
                   <th style={{ padding: '0.9rem 1rem' }}>Interval</th>
                   <th style={{ padding: '0.9rem 1rem' }}>Coverage</th>
@@ -110,6 +111,7 @@ export default function DatasetLibraryPage({ selectedDatasetId, onSelectDataset,
                           {dataset.filename}
                         </div>
                       </td>
+                      {userRole === 'admin' && <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{dataset.uploaded_by || 'System'}</td>}
                       <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
                         {(dataset.row_count || 0).toLocaleString()}
                       </td>
@@ -132,7 +134,7 @@ export default function DatasetLibraryPage({ selectedDatasetId, onSelectDataset,
                           className={`btn ${isSelected ? 'btn-secondary' : 'btn-primary'}`}
                           style={{ padding: '0.5rem 0.75rem', fontSize: '0.78rem', whiteSpace: 'nowrap' }}
                         >
-                          {isSelected ? <><Check size={14} /> Selected</> : <>Use in Dashboard <ArrowRight size={14} /></>}
+                          {isSelected ? <><Check size={14} /> Selected</> : <>Use in {userRole === 'admin' ? 'Dashboard' : 'forecast'} <ArrowRight size={14} /></>}
                         </button>
                       </td>
                     </tr>

@@ -1,8 +1,8 @@
 import React from 'react';
-import { Cpu, CheckCircle2, Award, Zap } from 'lucide-react';
+import { Cpu, CheckCircle2, Award, Eye, EyeOff } from 'lucide-react';
 import { formatPercent } from '../utils/formatters';
 
-export default function ModelMetrics({ models = [], onSelectModel, activeModel = 'xgboost' }) {
+export default function ModelMetrics({ models = [], onSelectModel, activeModel = 'xgboost', isAdmin = false, onTogglePublication }) {
   return (
     <div className="glass-card" style={{ padding: '1.75rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
@@ -37,6 +37,7 @@ export default function ModelMetrics({ models = [], onSelectModel, activeModel =
               <th style={{ padding: '0.85rem 1rem' }}>MAPE (%)</th>
               <th style={{ padding: '0.85rem 1rem' }}>R² Score</th>
               <th style={{ padding: '0.85rem 1rem' }}>Action</th>
+              {isAdmin && <th style={{ padding: '0.85rem 1rem' }}>User Access</th>}
             </tr>
           </thead>
           <tbody>
@@ -94,6 +95,16 @@ export default function ModelMetrics({ models = [], onSelectModel, activeModel =
                       )}
                     </button>
                   </td>
+                  {isAdmin && <td style={{ padding: '1rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => onTogglePublication(m)}
+                      className="btn btn-secondary"
+                      style={{ padding: '0.4rem 0.7rem', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                    >
+                      {m.is_published ? <><EyeOff size={14} /> Unpublish</> : <><Eye size={14} /> Publish</>}
+                    </button>
+                  </td>}
                 </tr>
               );
             })}

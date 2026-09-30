@@ -1,6 +1,14 @@
 -- Energy Consumption Forecasting Database Schema
 -- Compatible with SQLite3 and PostgreSQL
 
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username VARCHAR(64) NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'user',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS datasets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR(255) NOT NULL,
@@ -12,6 +20,7 @@ CREATE TABLE IF NOT EXISTS datasets (
     start_timestamp TIMESTAMP,
     end_timestamp TIMESTAMP,
     status VARCHAR(50) DEFAULT 'processed',
+    owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -46,6 +55,7 @@ CREATE TABLE IF NOT EXISTS ml_models (
     r2_score REAL,
     hyperparameters TEXT, -- JSON string
     is_active BOOLEAN DEFAULT 1,
+    is_published BOOLEAN DEFAULT 0,
     trained_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
