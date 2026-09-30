@@ -8,6 +8,7 @@ import DatasetLibraryPage from './pages/DatasetLibraryPage.jsx';
 import AnalyticsPage from './pages/AnalyticsPage.jsx';
 import ModelsPage from './pages/ModelsPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
+import UsersPage from './pages/UsersPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import { api, DEFAULT_SYSTEM_SETTINGS } from './services/api.js';
 
@@ -164,6 +165,8 @@ export default function App() {
         );
       case 'settings':
         return <SettingsPage initialSettings={systemSettings} onSaveSettings={saveSettings} />;
+      case 'users':
+        return currentUser?.role === 'admin' ? <UsersPage /> : null;
       default:
         return <DashboardPage selectedDatasetId={selectedDatasetId} selectedModel={selectedModel} />;
     }

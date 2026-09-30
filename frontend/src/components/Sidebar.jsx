@@ -9,6 +9,7 @@ import {
   Settings as SettingsIcon,
   ShieldCheck,
   LogOut,
+  Users,
 } from 'lucide-react';
 
 export default function Sidebar({ activeTab, onSelectTab, role = 'admin', username = '', onLogout }) {
@@ -19,6 +20,7 @@ export default function Sidebar({ activeTab, onSelectTab, role = 'admin', userna
     { id: 'datasets', label: 'Dataset Library', icon: Database },
     { id: 'analytics', label: 'Analytics & Insights', icon: BarChart3 },
     { id: 'models', label: 'Model Benchmarks', icon: Cpu },
+    { id: 'users', label: 'Users', icon: Users },
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
   ];
   const userItems = [

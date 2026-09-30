@@ -55,3 +55,48 @@ def test_authentication_dataset_ownership_and_publication(admin_client):
             conn.execute("UPDATE ml_models SET is_published = ? WHERE id = ?", (prior_publication, model_id))
             conn.execute("DELETE FROM datasets WHERE id = ?", (dataset_id,))
             conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+
+
+def test_admin_user_management_lists_accounts_and_resets_password(admin_client):
+    username = f"managed_{uuid.uuid4().hex[:10]}"
+    original_password = "original-password-123"
+    new_password = "replacement-password-456"
+    registered = admin_client.post(
+        "/api/auth/register",
+        json={"username": username, "password": original_password},
+    )
+    assert registered.status_code == 200
+    user_id = registered.json()["user"]["id"]
+    user_client = TestClient(app)
+    user_client.headers.update({"Authorization": f"Bearer {registered.json()['access_token']}"})
+
+    try:
+        users_response = admin_client.get("/api/auth/users")
+        assert users_response.status_code == 200
+        listed_user = next(user for user in users_response.json() if user["id"] == user_id)
+        assert listed_user["username"] == username
+        assert listed_user["role"] == "user"
+        assert any(user["role"] == "admin" for user in users_response.json())
+        assert all("password" not in user and "password_hash" not in user for user in users_response.json())
+        assert user_client.get("/api/auth/users").status_code == 403
+        assert user_client.put(
+            f"/api/auth/users/{user_id}/password",
+            json={"password": new_password},
+        ).status_code == 403
+
+        reset_response = admin_client.put(
+            f"/api/auth/users/{user_id}/password",
+            json={"password": new_password},
+        )
+        assert reset_response.status_code == 200
+        assert user_client.post(
+            "/api/auth/login",
+            json={"username": username, "password": new_password},
+        ).status_code == 200
+        assert admin_client.put(
+            "/api/auth/users/999999999/password",
+            json={"password": new_password},
+        ).status_code == 404
+    finally:
+        with get_db_connection() as conn:
+            conn.execute("DELETE FROM users WHERE id = ?", (user_id,))

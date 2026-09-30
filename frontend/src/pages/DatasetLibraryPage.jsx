@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Database, RefreshCw, UploadCloud, ArrowRight, Check } from 'lucide-react';
+import { Database, RefreshCw, UploadCloud, ArrowRight, Check, Filter } from 'lucide-react';
 import { api } from '../services/api.js';
 import Loading from '../components/Loading.jsx';
 
@@ -11,11 +11,22 @@ function formatDate(value) {
   });
 }
 
+function formatUploadedAt(value) {
+  if (!value) return '—';
+  const normalized = value.includes('T') ? value : `${value.replace(' ', 'T')}Z`;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString(undefined, {
+    year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+  });
+}
+
 export default function DatasetLibraryPage({ selectedDatasetId, onSelectDataset, onOpenDashboard, onOpenUpload, userRole }) {
   const [datasets, setDatasets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [uploaderFilter, setUploaderFilter] = useState('all');
 
   const loadDatasets = async (refresh = false) => {
     if (refresh) setRefreshing(true);
@@ -33,7 +44,11 @@ export default function DatasetLibraryPage({ selectedDatasetId, onSelectDataset,
 
   useEffect(() => { loadDatasets(); }, []);
 
-  const totalRows = datasets.reduce((sum, dataset) => sum + (dataset.row_count || 0), 0);
+  const uploaders = [...new Set(datasets.map((dataset) => dataset.uploaded_by || 'System'))].sort((left, right) => left.localeCompare(right));
+  const visibleDatasets = userRole === 'admin' && uploaderFilter !== 'all'
+    ? datasets.filter((dataset) => (dataset.uploaded_by || 'System') === uploaderFilter)
+    : datasets;
+  const totalRows = visibleDatasets.reduce((sum, dataset) => sum + (dataset.row_count || 0), 0);
 
   if (loading) return <Loading message="Loading stored datasets..." />;
 
@@ -71,9 +86,26 @@ export default function DatasetLibraryPage({ selectedDatasetId, onSelectDataset,
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '2rem', marginBottom: '1.25rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-        <span><strong style={{ color: 'var(--text-primary)' }}>{datasets.length}</strong> datasets</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', gap: '2rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+          <span><strong style={{ color: 'var(--text-primary)' }}>{visibleDatasets.length}</strong> {visibleDatasets.length === datasets.length ? 'datasets' : `of ${datasets.length} datasets`}</span>
         <span><strong style={{ color: 'var(--text-primary)' }}>{totalRows.toLocaleString()}</strong> readings</span>
+        </div>
+        {userRole === 'admin' && datasets.length > 0 && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
+            <Filter size={15} color="var(--text-muted)" />
+            <span>Uploaded by</span>
+            <select
+              value={uploaderFilter}
+              onChange={(event) => setUploaderFilter(event.target.value)}
+              aria-label="Filter datasets by uploader"
+              style={{ minWidth: '170px', padding: '0.55rem 0.7rem', color: 'var(--text-primary)', background: 'var(--surface-control)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)' }}
+            >
+              <option value="all">All users</option>
+              {uploaders.map((uploader) => <option key={uploader} value={uploader}>{uploader}</option>)}
+            </select>
+          </label>
+        )}
       </div>
 
       {datasets.length === 0 ? (
@@ -88,11 +120,12 @@ export default function DatasetLibraryPage({ selectedDatasetId, onSelectDataset,
       ) : (
         <div className="glass-card" style={{ overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '780px', fontSize: '0.84rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px', fontSize: '0.84rem' }}>
               <thead>
                 <tr style={{ color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid var(--border-subtle)', fontSize: '0.72rem', textTransform: 'uppercase' }}>
                   <th style={{ padding: '0.9rem 1rem' }}>Dataset</th>
                   {userRole === 'admin' && <th style={{ padding: '0.9rem 1rem' }}>Uploaded by</th>}
+                  <th style={{ padding: '0.9rem 1rem', whiteSpace: 'nowrap' }}>Uploaded</th>
                   <th style={{ padding: '0.9rem 1rem' }}>Readings</th>
                   <th style={{ padding: '0.9rem 1rem' }}>Interval</th>
                   <th style={{ padding: '0.9rem 1rem' }}>Coverage</th>
@@ -101,7 +134,7 @@ export default function DatasetLibraryPage({ selectedDatasetId, onSelectDataset,
                 </tr>
               </thead>
               <tbody>
-                {datasets.map((dataset) => {
+                {visibleDatasets.map((dataset) => {
                   const isSelected = dataset.id === selectedDatasetId;
                   return (
                     <tr key={dataset.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
@@ -112,6 +145,7 @@ export default function DatasetLibraryPage({ selectedDatasetId, onSelectDataset,
                         </div>
                       </td>
                       {userRole === 'admin' && <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{dataset.uploaded_by || 'System'}</td>}
+                      <td style={{ padding: '1rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{formatUploadedAt(dataset.created_at)}</td>
                       <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
                         {(dataset.row_count || 0).toLocaleString()}
                       </td>
@@ -140,6 +174,9 @@ export default function DatasetLibraryPage({ selectedDatasetId, onSelectDataset,
                     </tr>
                   );
                 })}
+                {!visibleDatasets.length && (
+                  <tr><td colSpan={userRole === 'admin' ? 8 : 7} style={{ padding: '1.25rem 1rem', color: 'var(--text-muted)' }}>No datasets found for this uploader.</td></tr>
+                )}
               </tbody>
             </table>
           </div>

@@ -48,6 +48,12 @@ export const api = {
     body: JSON.stringify({ username, password }),
   }),
   getCurrentUser: () => request('/auth/me'),
+  getUsers: () => request('/auth/users'),
+  resetUserPassword: (userId, password) => request(`/auth/users/${userId}/password`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  }),
 
   // Health & Status
   getHealth: () => request('/health'),

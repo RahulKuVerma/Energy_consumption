@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from backend.app.core.auth import create_access_token, get_current_user, hash_password, verify_password
+from backend.app.core.auth import create_access_token, get_current_user, hash_password, require_admin, verify_password
 from backend.app.core.database import get_db_connection
 
 router = APIRouter()
@@ -9,6 +9,10 @@ router = APIRouter()
 
 class Credentials(BaseModel):
     username: str = Field(min_length=3, max_length=64)
+    password: str = Field(min_length=8, max_length=128)
+
+
+class PasswordReset(BaseModel):
     password: str = Field(min_length=8, max_length=128)
 
 
@@ -47,3 +51,24 @@ def login(payload: Credentials):
 @router.get("/me")
 def read_current_user(user=Depends(get_current_user)):
     return user
+
+
+@router.get("/users")
+def list_users(_admin=Depends(require_admin)):
+    with get_db_connection() as conn:
+        rows = conn.execute(
+            "SELECT id, username, role, created_at FROM users ORDER BY created_at DESC, id DESC"
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+@router.put("/users/{user_id}/password")
+def reset_user_password(user_id: int, payload: PasswordReset, _admin=Depends(require_admin)):
+    with get_db_connection() as conn:
+        cursor = conn.execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            (hash_password(payload.password), user_id),
+        )
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="User not found")
+    return {"status": "success"}
