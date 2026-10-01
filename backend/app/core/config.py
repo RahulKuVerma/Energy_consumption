@@ -19,6 +19,7 @@ BACKEND_DIR = BASE_DIR / "backend"
 UPLOAD_DIR = BASE_DIR / "uploads"
 ML_DIR = BASE_DIR / "ml"
 DATABASE_DIR = BASE_DIR / "database"
+APP_DATA_DIR = Path(os.getenv("APP_DATA_DIR", str(BASE_DIR))).resolve()
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Energy Consumption Forecasting API"
@@ -32,19 +33,20 @@ class Settings(BaseSettings):
     DEBUG: bool = os.getenv("DEBUG", "True").lower() in ("true", "1")
     
     # Database
-    DATABASE_PATH: Path = DATABASE_DIR / "energy_forecasting.db"
+    DATABASE_PATH: Path = Path(os.getenv("DATABASE_PATH", str(APP_DATA_DIR / "database" / "energy_forecasting.db")))
+    DATABASE_SCHEMA_DIR: Path = DATABASE_DIR
     DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{DATABASE_PATH.as_posix()}")
     
     # Storage Paths & Uploads
-    RAW_UPLOAD_DIR: Path = UPLOAD_DIR / "raw"
-    PROCESSED_UPLOAD_DIR: Path = UPLOAD_DIR / "processed"
-    TEMP_UPLOAD_DIR: Path = UPLOAD_DIR / "temporary"
+    RAW_UPLOAD_DIR: Path = APP_DATA_DIR / "uploads" / "raw"
+    PROCESSED_UPLOAD_DIR: Path = APP_DATA_DIR / "uploads" / "processed"
+    TEMP_UPLOAD_DIR: Path = APP_DATA_DIR / "uploads" / "temporary"
     ALLOWED_EXTENSIONS: set = {"csv", "xlsx", "txt"}
     
     # ML Models
-    MODEL_DIR: Path = ML_DIR / "saved_models"
-    DATA_RAW_DIR: Path = ML_DIR / "data" / "raw"
-    DATA_PROCESSED_DIR: Path = ML_DIR / "data" / "processed"
+    MODEL_DIR: Path = APP_DATA_DIR / "ml" / "saved_models"
+    DATA_RAW_DIR: Path = APP_DATA_DIR / "ml" / "data" / "raw"
+    DATA_PROCESSED_DIR: Path = APP_DATA_DIR / "ml" / "data" / "processed"
     
     # Defaults & Alerts
     DEFAULT_FORECAST_HORIZON: int = int(os.getenv("FORECAST_HORIZON_DEFAULT", "24"))
@@ -71,6 +73,6 @@ for path in [
     settings.MODEL_DIR,
     settings.DATA_RAW_DIR,
     settings.DATA_PROCESSED_DIR,
-    DATABASE_DIR,
+    settings.DATABASE_PATH.parent,
 ]:
     path.mkdir(parents=True, exist_ok=True)

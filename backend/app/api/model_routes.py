@@ -121,9 +121,20 @@ def train_models(payload: TrainingRequest, _admin=Depends(require_admin)):
             from ml.training.train_lstm import train_lstm
 
             metrics = {
-                "linear_regression": train_linear_regression(data_path=training_path),
-                "xgboost": train_xgboost(data_path=training_path),
-                "lstm": train_lstm(data_path=training_path),
+                "linear_regression": train_linear_regression(
+                    data_path=training_path,
+                    model_save_path=settings.MODEL_DIR / "linear_regression.pkl",
+                    scaler_save_path=settings.MODEL_DIR / "scaler.pkl",
+                ),
+                "xgboost": train_xgboost(
+                    data_path=training_path,
+                    model_save_path=settings.MODEL_DIR / "xgboost_model.json",
+                ),
+                "lstm": train_lstm(
+                    data_path=training_path,
+                    model_save_path=settings.MODEL_DIR / "lstm_model.keras",
+                    scaler_save_path=settings.MODEL_DIR / "lstm_scaler.pkl",
+                ),
             }
         with get_db_connection() as conn:
             for model_type, result in metrics.items():

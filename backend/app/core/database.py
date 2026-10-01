@@ -50,8 +50,8 @@ def init_db(force: bool = False):
     db_file.parent.mkdir(parents=True, exist_ok=True)
     db_exists = db_file.exists() and db_file.stat().st_size > 0
 
-    schema_file = settings.DATABASE_PATH.parent / "schema.sql"
-    seed_file = settings.DATABASE_PATH.parent / "seed.sql"
+    schema_file = settings.DATABASE_SCHEMA_DIR / "schema.sql"
+    seed_file = settings.DATABASE_SCHEMA_DIR / "seed.sql"
 
     if not db_exists or force:
         with sqlite3.connect(str(db_file)) as conn:

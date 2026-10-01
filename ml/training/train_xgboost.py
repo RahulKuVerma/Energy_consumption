@@ -57,7 +57,7 @@ def train_xgboost(
     
     # Save feature importance
     importances = model.get_feature_importances()
-    imp_path = REPO_ROOT / "ml" / "saved_models" / "xgboost_feature_importance.json"
+    imp_path = Path(model_save_path).parent / "xgboost_feature_importance.json"
     with open(imp_path, "w") as f:
         json.dump(importances, f, indent=2)
         
